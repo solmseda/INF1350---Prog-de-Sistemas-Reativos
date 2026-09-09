@@ -3,9 +3,6 @@
 #include "app.h"
 #include "pindefs.h"
 
-#include <avr/interrupt.h>
-#include <util/atomic.h>
-
 const int button_count = 3;
 const int timer_count = 5;
 const unsigned long debounce_time = 30; //tempo permitido em ms entre pressionar cada botão
@@ -19,7 +16,6 @@ struct Button {
   int lastValue;
   unsigned long lastChange;
   int active;
-  int debouncing;
 };
 
 /*
@@ -32,20 +28,6 @@ struct Timer {
 
 static Button buttons[button_count];
 static Timer timers[timer_count];
-
-// A ISR apenas registra que algum pino de A0 a A5 mudou. A leitura, o debounce
-// e os callbacks ficam no loop, mantendo o tratamento de interrupcao curto.
-static volatile byte buttonInterruptPending = 0;
-
-static void enable_pin_change_interrupt(byte pin) {
-  *digitalPinToPCMSK(pin) |= bit(digitalPinToPCMSKbit(pin));
-  PCIFR |= bit(digitalPinToPCICRbit(pin));
-  PCICR |= bit(digitalPinToPCICRbit(pin));
-}
-
-ISR(PCINT1_vect) {
-  buttonInterruptPending = 1;
-}
 
 /*
 Os botoes usam INPUT_PULLUP: pressionado produz LOW (1)
@@ -78,8 +60,6 @@ void button_listen(int pin) {
       buttons[i].lastValue = value;
       buttons[i].lastChange = millis();
       buttons[i].active = 1;
-      buttons[i].debouncing = 0;
-      enable_pin_change_interrupt(pin);
       return;
     }
   }
@@ -143,35 +123,10 @@ void loop() {
   // Mantem a multiplexacao do display feita pela biblioteca.
   MFS.manualDisplayRefresh();
 
-  // Consome atomicamente a flag compartilhada com a ISR. Assim, uma nova
-  // interrupcao não pode ser perdida entre a leitura e a limpeza da flag.
-  byte pinsChanged;
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    pinsChanged = buttonInterruptPending;
-    buttonInterruptPending = 0;
-  }
-
-  // Quando a ISR sinaliza uma borda, inicia ou reinicia o debounce dos botoes
-  // afetados. Nenhuma regra da aplicacao e executada dentro da interrupcao.
-  if (pinsChanged) {
-    for (int i = 0; i < button_count; i++) {
-      if (!buttons[i].active) {
-        continue;
-      }
-
-      int value = button_level(digitalRead(buttons[i].pin));
-      if (value != buttons[i].lastValue) {
-        buttons[i].lastValue = value;
-        buttons[i].lastChange = now;
-        buttons[i].debouncing = 1;
-      }
-    }
-  }
-
-  // Durante o debounce, acompanha o pino até ele permanecer estavel por 30 ms.
-  // O callback roda no loop e devolve o controle antes do proximo evento.
+  // Le os botoes por polling. Uma mudanca so e aceita se permanecer estavel
+  // durante o debounce; o loop nunca fica bloqueado esperando esse intervalo.
   for (int i = 0; i < button_count; i++) {
-    if (!buttons[i].active || !buttons[i].debouncing) {
+    if (!buttons[i].active) {
       continue;
     }
 
@@ -179,15 +134,12 @@ void loop() {
     if (value != buttons[i].lastValue) {
       buttons[i].lastValue = value;
       buttons[i].lastChange = now;
-      continue;
     }
 
-    if (now - buttons[i].lastChange >= debounce_time) {
-      buttons[i].debouncing = 0;
-      if (value != buttons[i].stableValue) {
-        buttons[i].stableValue = value;
-        button_changed(buttons[i].pin, value);
-      }
+    if (value != buttons[i].stableValue &&
+        now - buttons[i].lastChange >= debounce_time) {
+      buttons[i].stableValue = value;
+      button_changed(buttons[i].pin, value);
     }
   }
 
