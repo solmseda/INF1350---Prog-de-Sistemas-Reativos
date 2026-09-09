@@ -81,7 +81,9 @@ void generateSequence() {
   }
 }
 
-// Acende o LED da posicao atual. O temporizador o apagara depois de LED_ON_TIME.
+/*
+Acende o LED da posicao atual. O temporizador o apagara depois de LED_ON_TIME.
+*/
 void showNextLed() {
   gameState = SHOWING_LED;
   setSequenceLed(sequence[sequencePosition], 1);
@@ -201,8 +203,10 @@ void appinit() {
   startGame();
 }
 
-// Callback chamado somente depois que a infraestrutura elimina o ruido
-// mecanico (debounce) de uma mudanca de botao.
+/*
+Callback chamado somente depois que a infraestrutura elimina o ruido
+mecanico (debounce) de uma mudanca de botao.
+*/
 void button_changed(int pin, int pressed) {
   if (pin == KEY1) {
     key1Down = pressed;
@@ -228,7 +232,9 @@ void button_changed(int pin, int pressed) {
   timer_set(input_timer, 50);
 }
 
-// Centraliza as transicoes provocadas pelos quatro temporizadores da aplicacao.
+/*
+Centraliza as transicoes provocadas pelos quatro temporizadores da aplicacao.
+*/
 void timer_expired(int timer) {
   if (timer == countdown_timer) {
     // Mantem a contagem regressiva ativa ate um dos estados finais.

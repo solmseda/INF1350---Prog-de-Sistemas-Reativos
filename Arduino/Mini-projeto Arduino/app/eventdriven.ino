@@ -53,6 +53,7 @@ void button_listen(int pin) {
   for (int i = 0; i < button_count; i++) {
     if (!buttons[i].active) {
       pinMode(pin, INPUT_PULLUP);
+
       // Comeca com todas as leituras sincronizadas para não gerar um evento falso
       int value = button_level(digitalRead(pin));
       buttons[i].pin = pin;
@@ -65,7 +66,9 @@ void button_listen(int pin) {
   }
 }
 
-// Agenda ou substitui um temporizador
+/*
+Agenda ou substitui um temporizador
+*/ 
 void timer_set(int timer, unsigned long ms) {
   if (timer < 0 || timer >= timer_count) {
     return;
@@ -75,7 +78,6 @@ void timer_set(int timer, unsigned long ms) {
   timers[timer].active = 1;
 }
 
-// Estas funcoes escondem da aplicacao a polaridade eletrica dos componentes
 void led_set(int led, int on) {
   pinMode(led, OUTPUT);
   digitalWrite(led, led_value(on));
@@ -86,8 +88,10 @@ void buzzer_set(int on) {
   digitalWrite(BUZZ, on ? LOW : HIGH);
 }
 
-// Monta a informacao especifica do jogo fora da biblioteca: x-xx representa
-// uma rodada vencida, um separador e os dois algarismos do tempo restante.
+/*
+Monta o display onde o primeiro digito é a quantidade de acertos seguido por "-" 
+e o tempo restante
+*/ 
 void display_status(int correctAnswers, int secondsRemaining) {
   correctAnswers = constrain(correctAnswers, 0, 9);
   secondsRemaining = constrain(secondsRemaining, 0, 99);
@@ -113,8 +117,6 @@ int random_value(int limit) {
 void setup() {
   // Usando a biblioteca MultiFuncShield apenas para facilitar a escrita no display
   MFS.initialize();
-  // O ruido analogico do potenciometro fornece uma semente diferente a cada uso.
-  randomSeed(analogRead(POT));
   appinit();
 }
 
