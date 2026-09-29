@@ -21,6 +21,11 @@ function love.load()
 
     EventManager.clear()
 
+    StageController.reset()
+    Enemy.clear()
+    BulletManager.clear()
+    Boss.reset()
+
     GameStateMachine.load()
 
     Player.load()
@@ -114,6 +119,16 @@ function Enemy.clear()
     Enemy.list = {}
 end
 
+function love.keypressed(key)
+    local state = GameStateMachine.getState()
+    local gameEnded = state == GameStateMachine.states.GAME_OVER
+        or state == GameStateMachine.states.VICTORY
+
+    if key == "r" and gameEnded then
+        love.load()
+    end
+end
+
 function love.update(dt)
     local state = GameStateMachine.getState()
 
@@ -158,10 +173,12 @@ function love.draw()
 
     elseif state == GameStateMachine.states.GAME_OVER then
         love.graphics.printf("GAME OVER", 0, 250, 800, "center")
+        love.graphics.printf("Pressione R para reiniciar", 0, 280, 800, "center")
 
     elseif state ==
     GameStateMachine.states.VICTORY then
 
     love.graphics.printf("VICTORY", 0, 250, 800, "center")
+    love.graphics.printf("Pressione R para reiniciar", 0, 280, 800, "center")
     end
 end

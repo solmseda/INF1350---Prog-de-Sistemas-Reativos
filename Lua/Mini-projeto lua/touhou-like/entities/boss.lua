@@ -33,6 +33,19 @@ Boss.patternAngle = 0
 
 Boss.secondaryAttackTimer = 0
 
+function Boss.reset()
+    Boss.active = false
+    Boss.x = 400 - Boss.width / 2
+    Boss.y = -100
+    Boss.hp = Boss.maxHp
+    Boss.state = "inactive"
+    Boss.attackTimer = 0
+    Boss.secondaryAttackTimer = 0
+    Boss.patternAngle = 0
+    Boss.targetX = nil
+    Boss.direction = 1
+end
+
 function Boss.spawn()
     Boss.active = true
 
