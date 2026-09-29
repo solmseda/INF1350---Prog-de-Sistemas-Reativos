@@ -7,10 +7,7 @@ function EventManager.on(eventName, callback)
         EventManager.listeners[eventName] = {}
     end
 
-    table.insert(
-        EventManager.listeners[eventName],
-        callback
-    )
+    table.insert(EventManager.listeners[eventName], callback)
 end
 
 function EventManager.emit(eventName, data)

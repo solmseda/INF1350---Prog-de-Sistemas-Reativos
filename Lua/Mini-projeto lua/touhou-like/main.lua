@@ -16,6 +16,8 @@ local BulletPatterns = require("bullets.bullet_patterns")
 
 local Boss = require("entities.boss")
 
+local waitingForEnemies = false
+
 function love.load()
     love.window.setMode(800, 600)
 
@@ -25,6 +27,7 @@ function love.load()
     Enemy.clear()
     BulletManager.clear()
     Boss.reset()
+    waitingForEnemies = false
 
     GameStateMachine.load()
 
@@ -51,12 +54,18 @@ function love.load()
 
     EventManager.on("ENEMY_SHOOT",
     function(enemy)
-        BulletPatterns.aimed(
-            enemy.x + enemy.width / 2, 
-            enemy.y + enemy.height / 2,
-            Player,
-            150
-        )
+        local x = enemy.x + enemy.width / 2
+        local y = enemy.y + enemy.height / 2
+
+        if enemy.pattern == "spread" then
+            BulletPatterns.spread(x, y, Player, 5, 0.15, 150)
+        elseif enemy.pattern == "circle" then
+            BulletPatterns.circle(x, y, 12, 120)
+        else
+            -- "aimed" is also the safe fallback for old stage data that
+            -- does not define a pattern.
+            BulletPatterns.aimed(x, y, Player, 150)
+        end
     end
     )
 
@@ -67,9 +76,15 @@ function love.load()
     )
 
     EventManager.on(
+        "STAGE_WAVES_FINISHED",
+        function()
+            waitingForEnemies = true
+        end
+    )
+
+    EventManager.on(
         "STAGE_FINISHED",
         function()
-            Enemy.clear()
             BulletManager.clear()
             Boss.spawn()
         end
@@ -140,6 +155,11 @@ function love.update(dt)
         Enemy.update(dt)
 
         BulletManager.update(dt, Player, Enemy, Boss)
+
+        if waitingForEnemies and #Enemy.list == 0 then
+            waitingForEnemies = false
+            EventManager.emit("STAGE_FINISHED")
+        end
         
     elseif state == GameStateMachine.states.BOSS then
         Player.update(dt)

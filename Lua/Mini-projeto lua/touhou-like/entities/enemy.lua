@@ -23,9 +23,10 @@ function Enemy.create(data)
         timer = 0,
 
         shootTimer = 0,
-        shootInterval = 1,
+        shootInterval = data.shootInterval or 1,
+        attackDuration = data.attackDuration or 4,
 
-        pattern = data.patern
+        pattern = data.pattern or "aimed"
     }
 
     table.insert(Enemy.list, enemy)
@@ -59,7 +60,7 @@ function Enemy.update(dt)
                     enemy.shootTimer = 0
                 end
 
-                if enemy.timer >= 3 then
+                if enemy.timer >= enemy.attackDuration then
                     enemy.state = "leaving"
                 end
 
