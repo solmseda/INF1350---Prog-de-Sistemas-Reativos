@@ -73,24 +73,29 @@ function love.load()
     EventManager.on(
         "BOSS_SHOOT",
         function(data)
-
             local boss =data.boss
 
             local x = boss.x + boss.width / 2
 
-            local y = boss.y + boss.height
+            local y = boss.y + boss.height / 2
 
-            if data.pattern == "circle" then
+            if data.pattern == "ring" then
+                BulletPatterns.rotatingCircle(x, y, 24, 110, data.angle or 0)
 
-                BulletPatterns.circle(x, y, 24, 100)
+            elseif data.pattern == "aimed" then
+                BulletPatterns.spread(x, y, Player, 5, 0.12, 180)
+
+            elseif data.pattern == "spiral" then
+                BulletPatterns.spiral(x, y, 4, data.angle or 0, 120)
 
             elseif data.pattern == "spread" then
-                BulletPatterns.spread(x, y, Player, 7, 0.12, 170)
+                BulletPatterns.spread(x, y, Player, 7, 0.10, 180)
 
-            elseif data.pattern == "final" then
-                BulletPatterns.circle( x, y, 32, 130)
+            elseif data.pattern == "double_spiral" then
+                BulletPatterns.doubleSpiral(x, y, 3, data.angle or 0, 140)
 
-                BulletPatterns.spread(x, y, Player, 5, 0.15, 200)
+            elseif data.pattern == "multi_ring" then
+                BulletPatterns.multiRing(x, y, 20, 3, 100)
             end
         end
     )

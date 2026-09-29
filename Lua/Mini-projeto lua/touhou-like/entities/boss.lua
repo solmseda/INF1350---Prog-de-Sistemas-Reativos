@@ -20,6 +20,18 @@ Boss.state = "inactive"
 
 Boss.attackTimer = 0
 
+Boss.moveSpeed = 100
+
+Boss.direction = 1
+
+Boss.minX = 100
+Boss.maxX = 700
+
+Boss.targetX = nil
+
+Boss.patternAngle = 0
+
+Boss.secondaryAttackTimer = 0
 
 function Boss.spawn()
     Boss.active = true
@@ -32,6 +44,15 @@ function Boss.spawn()
     Boss.state = "entering"
 
     Boss.attackTimer = 0
+
+    Boss.direction = 1
+
+    Boss.patternAngle = 0
+
+    Boss.attackTimer = 0
+    Boss.secondaryAttackTimer = 0
+
+    Boss.targetX = nil
 end
 
 
@@ -70,6 +91,9 @@ function Boss.changeState(newState)
 
     Boss.state = newState
     Boss.attackTimer = 0
+    Boss.secondaryAttackTimer = 0
+    Boss.patternAngle = 0
+    Boss.targetX = nil
 
     EventManager.emit(
         "BOSS_PHASE_CHANGED",
@@ -81,25 +105,66 @@ function Boss.changeState(newState)
 end
 
 function Boss.updatePhase1(dt)
+    Boss.moveHorizontal(dt, 80)
+
     Boss.attackTimer = Boss.attackTimer + dt
 
-    if Boss.attackTimer >= 1 then
+    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
+
+    -- Anel
+    if Boss.attackTimer >= 1.2 then
         EventManager.emit(
             "BOSS_SHOOT",
             {
                 boss = Boss,
-                pattern = "circle"
+                pattern = "ring",
+                angle = Boss.patternAngle
             }
         )
+        Boss.patternAngle = Boss.patternAngle + 0.15
 
         Boss.attackTimer = 0
+
+    end
+
+    -- Ataque direcionado
+    if Boss.secondaryAttackTimer >= 2 then
+        EventManager.emit(
+            "BOSS_SHOOT",
+            {
+                boss = Boss,
+                pattern = "aimed"
+            }
+        )
+        Boss.secondaryAttackTimer = 0
     end
 end
 
 function Boss.updatePhase2(dt)
+    Boss.moveToTarget(dt, 120)
+
     Boss.attackTimer = Boss.attackTimer + dt
 
-    if Boss.attackTimer >= 0.6 then
+    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
+
+
+    -- Espiral
+    if Boss.attackTimer >= 0.12 then
+        EventManager.emit(
+            "BOSS_SHOOT",
+            {
+                boss = Boss,
+                pattern = "spiral",
+                angle = Boss.patternAngle
+            }
+        )
+
+        Boss.patternAngle =Boss.patternAngle + 0.12
+        Boss.attackTimer = 0
+    end
+
+    -- Spread
+    if Boss.secondaryAttackTimer >= 2.5 then
         EventManager.emit(
             "BOSS_SHOOT",
             {
@@ -108,23 +173,40 @@ function Boss.updatePhase2(dt)
             }
         )
 
-        Boss.attackTimer = 0
+        Boss.secondaryAttackTimer = 0
     end
 end
 
 function Boss.updatePhase3(dt)
-    Boss.attackTimer = Boss.attackTimer + dt
+    Boss.moveHorizontal(dt, 160)
 
-    if Boss.attackTimer >= 0.35 then
+    Boss.attackTimer =Boss.attackTimer + dt
+    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
+
+    -- Espiral dupla
+    if Boss.attackTimer >= 0.10 then
         EventManager.emit(
             "BOSS_SHOOT",
             {
                 boss = Boss,
-                pattern = "final"
+                pattern = "double_spiral",
+                angle = Boss.patternAngle
             }
         )
-
+        Boss.patternAngle = Boss.patternAngle + 0.10
         Boss.attackTimer = 0
+    end
+
+    -- Ataque pesado
+    if Boss.secondaryAttackTimer >= 3 then
+        EventManager.emit(
+            "BOSS_SHOOT",
+            {
+                boss = Boss,
+                pattern = "multi_ring"
+            }
+        )
+        Boss.secondaryAttackTimer = 0
     end
 end
 
@@ -184,20 +266,53 @@ function Boss.damage(damage)
     end
 end
 
+function Boss.moveHorizontal(dt, speed)
+    Boss.x = Boss.x + Boss.direction * speed * dt
+
+    if Boss.x >= Boss.maxX - Boss.width then
+        Boss.x = Boss.maxX - Boss.width
+        Boss.direction = -1
+
+    elseif Boss.x <= Boss.minX then
+        Boss.x = Boss.minX
+
+        Boss.direction = 1
+    end
+end
+
+function Boss.chooseTarget()
+
+    Boss.targetX = love.math.random(Boss.minX, Boss.maxX - Boss.width)
+end
+
+function Boss.moveToTarget(dt, speed)
+    if Boss.targetX == nil then
+        Boss.chooseTarget()
+    end
+
+    local distance = Boss.targetX - Boss.x
+
+    if math.abs(distance) < 5 then
+        Boss.x = Boss.targetX
+
+        Boss.chooseTarget()
+        return
+    end
+
+    if distance > 0 then
+        Boss.x = Boss.x + speed * dt
+    else
+        Boss.x = Boss.x - speed * dt
+    end
+end
+
 function Boss.draw()
 
     if not Boss.active then
         return
     end
 
-
-    love.graphics.rectangle(
-        "fill",
-        Boss.x,
-        Boss.y,
-        Boss.width,
-        Boss.height
-    )
+    love.graphics.rectangle("fill", Boss.x, Boss.y, Boss.width, Boss.height)
 
     local barX = 100
     local barY = 30
