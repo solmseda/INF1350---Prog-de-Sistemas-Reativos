@@ -1,5 +1,4 @@
-local EventManager =
-    require("core.event_manager")
+local EventManager = require("core.event_manager")
 
 local StageController = {}
 

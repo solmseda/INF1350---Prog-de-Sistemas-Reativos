@@ -32,64 +32,26 @@ function BulletPatterns.spread(x, y, player, amount, spacing, speed)
     end
 end
 
--- Círculo com rotação inicial
-function BulletPatterns.rotatingCircle(
-    x,
-    y,
-    amount,
-    speed,
-    rotation
-)
-
+function BulletPatterns.rotatingCircle(x, y, amount, speed, rotation)
     local fullCircle = math.pi * 2
 
     for i = 0, amount - 1 do
 
-        local angle =
-            rotation
-            + (fullCircle / amount) * i
+        local angle = rotation + (fullCircle / amount) * i
 
-        BulletManager.create(
-            x,
-            y,
-            angle,
-            speed,
-            "enemy",
-            1
-        )
-
+        BulletManager.create(x, y, angle, speed, "enemy", 1)
     end
-
 end
 
-
--- Vários anéis com velocidades diferentes
-function BulletPatterns.multiRing(
-    x,
-    y,
-    amount,
-    rings,
-    baseSpeed
-)
-
+function BulletPatterns.multiRing(x, y, amount, rings, baseSpeed)
     for ring = 1, rings do
 
-        local speed =
-            baseSpeed + (ring - 1) * 35
+        local speed = baseSpeed + (ring - 1) * 35
 
-        local rotation =
-            (ring - 1) * 0.1
+        local rotation = (ring - 1) * 0.1
 
-        BulletPatterns.rotatingCircle(
-            x,
-            y,
-            amount,
-            speed,
-            rotation
-        )
-
+        BulletPatterns.rotatingCircle(x, y, amount, speed, rotation)
     end
-
 end
 
 function BulletPatterns.spiral(x, y, arms, angle, speed)

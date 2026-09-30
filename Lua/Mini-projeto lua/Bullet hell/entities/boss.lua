@@ -18,8 +18,6 @@ Boss.hp = 1000
 
 Boss.state = "inactive"
 
-Boss.attackTimer = 0
-
 Boss.moveSpeed = 100
 
 Boss.direction = 1
@@ -31,7 +29,27 @@ Boss.targetX = nil
 
 Boss.patternAngle = 0
 
-Boss.secondaryAttackTimer = 0
+Boss.attackCoroutines = {}
+
+local function wait(seconds)
+    local elapsed = 0
+
+    while elapsed < seconds do
+        elapsed = elapsed + (coroutine.yield() or 0)
+    end
+end
+
+local function createAttackCoroutine(phase, interval, attack)
+    return coroutine.create(function()
+        while Boss.active and Boss.state == phase do
+            wait(interval)
+
+            if Boss.active and Boss.state == phase then
+                attack()
+            end
+        end
+    end)
+end
 
 function Boss.reset()
     Boss.active = false
@@ -39,8 +57,7 @@ function Boss.reset()
     Boss.y = -100
     Boss.hp = Boss.maxHp
     Boss.state = "inactive"
-    Boss.attackTimer = 0
-    Boss.secondaryAttackTimer = 0
+    Boss.attackCoroutines = {}
     Boss.patternAngle = 0
     Boss.targetX = nil
     Boss.direction = 1
@@ -56,14 +73,11 @@ function Boss.spawn()
 
     Boss.state = "entering"
 
-    Boss.attackTimer = 0
-
     Boss.direction = 1
 
     Boss.patternAngle = 0
 
-    Boss.attackTimer = 0
-    Boss.secondaryAttackTimer = 0
+    Boss.attackCoroutines = {}
 
     Boss.targetX = nil
 end
@@ -85,13 +99,16 @@ function Boss.update(dt)
         end
 
     elseif Boss.state == "phase1" then
-        Boss.updatePhase1(dt)
+        Boss.moveHorizontal(dt, 80)
+        Boss.updateAttackCoroutines(dt)
 
     elseif Boss.state == "phase2" then
-        Boss.updatePhase2(dt)
+        Boss.moveToTarget(dt, 120)
+        Boss.updateAttackCoroutines(dt)
 
     elseif Boss.state == "phase3" then
-        Boss.updatePhase3(dt)
+        Boss.moveHorizontal(dt, 160)
+        Boss.updateAttackCoroutines(dt)
 
     elseif Boss.state == "defeated" then
         -- futuramente:
@@ -103,10 +120,10 @@ function Boss.changeState(newState)
     print("Boss:",Boss.state, "->", newState)
 
     Boss.state = newState
-    Boss.attackTimer = 0
-    Boss.secondaryAttackTimer = 0
     Boss.patternAngle = 0
     Boss.targetX = nil
+
+    Boss.startAttackCoroutines(newState)
 
     EventManager.emit(
         "BOSS_PHASE_CHANGED",
@@ -117,109 +134,72 @@ function Boss.changeState(newState)
     )
 end
 
-function Boss.updatePhase1(dt)
-    Boss.moveHorizontal(dt, 80)
+function Boss.emitAttack(pattern, angle)
+    EventManager.emit(
+        "BOSS_SHOOT",
+        {
+            boss = Boss,
+            pattern = pattern,
+            angle = angle
+        }
+    )
+end
 
-    Boss.attackTimer = Boss.attackTimer + dt
+function Boss.startAttackCoroutines(phase)
+    Boss.attackCoroutines = {}
 
-    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
+    local function add(interval, attack)
+        local routine = createAttackCoroutine(phase, interval, attack)
+        table.insert(Boss.attackCoroutines, routine)
 
-    -- Anel
-    if Boss.attackTimer >= 1.2 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "ring",
-                angle = Boss.patternAngle
-            }
-        )
-        Boss.patternAngle = Boss.patternAngle + 0.15
-
-        Boss.attackTimer = 0
-
+        -- Inicia a corrotina e a deixa pausada no primeiro wait.
+        local ok, message = coroutine.resume(routine)
+        if not ok then
+            error(message)
+        end
     end
 
-    -- Ataque direcionado
-    if Boss.secondaryAttackTimer >= 2 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "aimed"
-            }
-        )
-        Boss.secondaryAttackTimer = 0
+    if phase == "phase1" then
+        add(1.2, function()
+            Boss.emitAttack("ring", Boss.patternAngle)
+            Boss.patternAngle = Boss.patternAngle + 0.15
+        end)
+
+        add(2, function()
+            Boss.emitAttack("aimed")
+        end)
+
+    elseif phase == "phase2" then
+        add(0.12, function()
+            Boss.emitAttack("spiral", Boss.patternAngle)
+            Boss.patternAngle = Boss.patternAngle + 0.12
+        end)
+
+        add(2.5, function()
+            Boss.emitAttack("spread")
+        end)
+
+    elseif phase == "phase3" then
+        add(0.10, function()
+            Boss.emitAttack("double_spiral", Boss.patternAngle)
+            Boss.patternAngle = Boss.patternAngle + 0.10
+        end)
+
+        add(3, function()
+            Boss.emitAttack("multi_ring")
+        end)
     end
 end
 
-function Boss.updatePhase2(dt)
-    Boss.moveToTarget(dt, 120)
+function Boss.updateAttackCoroutines(dt)
+    for _, routine in ipairs(Boss.attackCoroutines) do
+        if coroutine.status(routine) == "suspended" then
+            local ok, message = coroutine.resume(routine, dt)
 
-    Boss.attackTimer = Boss.attackTimer + dt
-
-    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
-
-
-    -- Espiral
-    if Boss.attackTimer >= 0.12 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "spiral",
-                angle = Boss.patternAngle
-            }
-        )
-
-        Boss.patternAngle =Boss.patternAngle + 0.12
-        Boss.attackTimer = 0
-    end
-
-    -- Spread
-    if Boss.secondaryAttackTimer >= 2.5 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "spread"
-            }
-        )
-
-        Boss.secondaryAttackTimer = 0
-    end
-end
-
-function Boss.updatePhase3(dt)
-    Boss.moveHorizontal(dt, 160)
-
-    Boss.attackTimer =Boss.attackTimer + dt
-    Boss.secondaryAttackTimer = Boss.secondaryAttackTimer + dt
-
-    -- Espiral dupla
-    if Boss.attackTimer >= 0.10 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "double_spiral",
-                angle = Boss.patternAngle
-            }
-        )
-        Boss.patternAngle = Boss.patternAngle + 0.10
-        Boss.attackTimer = 0
-    end
-
-    -- Ataque pesado
-    if Boss.secondaryAttackTimer >= 3 then
-        EventManager.emit(
-            "BOSS_SHOOT",
-            {
-                boss = Boss,
-                pattern = "multi_ring"
-            }
-        )
-        Boss.secondaryAttackTimer = 0
+            if not ok then
+                error(message)
+            end
+        end
     end
 end
 
@@ -338,15 +318,7 @@ function Boss.draw()
 
     love.graphics.rectangle("fill", barX, barY, barWidth * hpPercent, barHeight)
 
-    love.graphics.print(
-        "BOSS HP: "
-        .. Boss.hp
-        .. "/"
-        .. Boss.maxHp,
-        barX,
-        barY + 20
-    )
-
+    love.graphics.print("BOSS HP: " .. Boss.hp .. "/" .. Boss.maxHp, barX, barY + 20)
 end
 
 return Boss
