@@ -13,10 +13,12 @@ local function request(c, data)
         return
     end
     busy = true
+    local context = {}
     local ok, handler = pcall(dofile, "http_connection.lc")
-    if ok then ok, handler = pcall(handler, c, release, data) end
+    if ok then ok, handler = pcall(handler, c, release, data, context) end
     if not ok then
         print("[HTTP] Falha:", tostring(handler))
+        if context.cleanup then context.cleanup(c) end
         busy = false
         c:close()
         collectgarbage("collect")

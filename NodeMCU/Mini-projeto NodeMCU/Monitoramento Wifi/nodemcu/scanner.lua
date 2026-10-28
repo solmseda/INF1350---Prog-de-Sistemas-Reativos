@@ -70,9 +70,7 @@ step = function()
     local request = token
     waiting = true
     timer:alarm(config.SCAN_CHANNEL_TIMEOUT, tmr.ALARM_SINGLE, timeout)
-    local ok, err = pcall(wifi.sta.getap,
-        {channel = channel, show_hidden = 0}, 1,
-        function(results) receive(results, request) end)
+    local ok, err = pcall(wifi.sta.getap,{channel = channel, show_hidden = 0}, 1, function(results) receive(results, request) end)
     if not ok then
         print("[SCANNER] Erro:", tostring(err))
         finish(false)
@@ -81,7 +79,7 @@ end
 
 function scanner.start(callback)
     if active or not state.is("WAITING") or require("http_server").is_busy() then return false end
-    -- A rodada anterior nao pode impedir a recuperacao por pouca memoria.
+    -- A rodada anterior não pode impedir a recuperação por pouca memoria.
     store.clear()
     collectgarbage("collect")
     print("[SCANNER] Heap antes:", node.heap())
@@ -94,7 +92,7 @@ function scanner.start(callback)
     return true
 end
 
--- Retorna apenas escalares; o JSON e sua tabela sao montados sob demanda.
+-- Retorna apenas escalares; o JSON e sua tabela são montados sob demanda.
 function scanner.get_stats()
     return active, active and channel or 0, last_result, last_received, last_missing
 end

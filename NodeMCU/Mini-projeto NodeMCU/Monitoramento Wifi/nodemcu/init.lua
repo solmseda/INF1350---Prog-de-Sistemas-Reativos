@@ -24,6 +24,10 @@ local function boot()
         files = nil
         collectgarbage("collect")
         require("main").start()
+        -- Os callbacks mantem so as funções necessarias em funcionamento.
+        -- Libera as tabelas e funções de configuração que so executam no boot.
+        package.loaded.main = nil
+        package.loaded.wifi_manager = nil
     end
 end
 -- Atraso para permitir acesso ao terminal em caso de problema.

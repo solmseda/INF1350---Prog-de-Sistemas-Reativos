@@ -13,14 +13,12 @@ local initialized = false
 local function execute_scan()
     local started = scanner.start(function(success, received, missing)
         if success then
-            print("[MAIN] Redes disponiveis: " ..
-                  network_store.get_count())
+            print("[MAIN] Redes disponiveis: " .. network_store.get_count())
         elseif received and received > 0 then
             print("[MAIN] Varredura parcial")
             print("[MAIN] Canais com resposta:", received)
             print("[MAIN] Canais sem resposta:", missing)
-            print("[MAIN] Canais nao tentados:",
-                  config.SCAN_LAST_CHANNEL - received - missing)
+            print("[MAIN] Canais nao tentados:", config.SCAN_LAST_CHANNEL - received - missing)
             print("[MAIN] Redes:", network_store.get_count())
         else
             print("[MAIN] Falha na varredura")
@@ -57,8 +55,7 @@ function main.start()
     print("       WIFI MONITOR")
     print("========================")
 
-    print("[MAIN] Dispositivo: " ..
-          config.DEVICE_NAME)
+    print("[MAIN] Dispositivo: " .. config.DEVICE_NAME)
 
     wifi_manager.start(on_wifi_connected)
 end

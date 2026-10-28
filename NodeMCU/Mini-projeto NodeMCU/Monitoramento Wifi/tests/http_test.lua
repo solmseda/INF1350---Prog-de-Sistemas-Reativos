@@ -37,10 +37,12 @@ net = {TCP=1,createServer=function(_,timeout)
     assert(timeout==5)
     return {listen=function(_,port,fn) assert(port==80); accept=fn end}
 end}
+local fail_send = false
 local function socket()
     local s={events={},chunks={},closed=false}
     function s:on(event,fn) self.events[event]=fn end
     function s:send(chunk,callback)
+        if fail_send then fail_send = false; error('simulated send OOM') end
         assert(not self.closed and #chunk<=512)
         self.chunks[#self.chunks+1]=chunk
         queue[#queue+1]=function()
@@ -102,6 +104,10 @@ assert(table.concat(malformed.chunks):find('400',1,true))
 assert(request('/missing'):find('404',1,true))
 assert(request('/api/status','POST'):find('405',1,true))
 local long=socket();long:receive(string.rep('x',257));assert(long.closed)
+assert(request('/api/status'):find('200 OK',1,true))
+fail_send=true
+local broken=socket();broken:receive('GET / HTTP/1.1\r\n\r\n');drain()
+assert(broken.closed and opened==0 and not require('http_server').is_busy())
 assert(request('/api/status'):find('200 OK',1,true))
 -- O snapshot conserva a resposta enquanto o scanner substitui seus dados.
 local api=dofile('http_networks.lua')

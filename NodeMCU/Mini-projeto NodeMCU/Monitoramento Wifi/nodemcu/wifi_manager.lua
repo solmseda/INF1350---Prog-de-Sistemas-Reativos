@@ -34,9 +34,11 @@ function wifi_manager.start(on_connected)
             print("[WIFI] Conectado!")
             print("[WIFI] IP: " .. current_ip)
 
-            if on_connected then
-                on_connected(current_ip)
-            end
+            -- Inicializacao da aplicacao apenas no primeiro IP. Eventos
+            -- posteriores continuam atualizando o estado e registrando o IP.
+            local callback = on_connected
+            on_connected = nil
+            if callback then callback(current_ip) end
         end
     )
 
@@ -48,18 +50,12 @@ function wifi_manager.start(on_connected)
             current_ip = nil
 
             print("[WIFI] Desconectado!")
-            print("[WIFI] Motivo: " ..
-                  tostring(info.reason))
+            print("[WIFI] Motivo: " .. tostring(info.reason))
         end
     )
 
     -- Configura a rede
-    wifi.sta.config({
-        ssid = config.WIFI_SSID,
-        pwd = config.WIFI_PASSWORD,
-        auto = true,
-        save = false
-    })
+    wifi.sta.config({ssid = config.WIFI_SSID, pwd = config.WIFI_PASSWORD, auto = true, save = false})
 
     -- Solicita a conexao
     wifi.sta.connect()

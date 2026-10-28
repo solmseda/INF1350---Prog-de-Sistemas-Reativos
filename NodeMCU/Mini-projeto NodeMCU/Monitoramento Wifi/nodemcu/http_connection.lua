@@ -1,5 +1,5 @@
 -- O codigo da conexao fica em RAM apenas enquanto houver uma requisicao.
-return function(conn, on_close, first_data)
+return function(conn, on_close, first_data, context)
     local handle, producer, line = nil, nil, ""
     local function cleanup(c)
         if handle then handle:close(); handle = nil end
@@ -14,6 +14,8 @@ return function(conn, on_close, first_data)
             release()
         end
     end
+    -- Permite ao servidor limpar recursos mesmo se houver erro no setup/send.
+    if context then context.cleanup = cleanup end
     local function close(c)
         cleanup(c)
         c:close()

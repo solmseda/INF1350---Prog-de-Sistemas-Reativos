@@ -12,9 +12,7 @@ local function schedule_next()
         return
     end
 
-    timer:alarm(
-        config.SCAN_INTERVAL,
-        tmr.ALARM_SINGLE,
+    timer:alarm(config.SCAN_INTERVAL, tmr.ALARM_SINGLE,
         function()
             if running and callback then
                 callback()
@@ -32,8 +30,7 @@ function scheduler.start(on_tick, immediate)
     running = true
 
     print("[SCHEDULER] Iniciado")
-    print("[SCHEDULER] Intervalo: " ..
-          config.SCAN_INTERVAL .. " ms")
+    print("[SCHEDULER] Intervalo: " .. config.SCAN_INTERVAL .. " ms")
 
     if immediate then
         -- A conclusao da primeira rodada agenda a proxima, sem timer paralelo.
