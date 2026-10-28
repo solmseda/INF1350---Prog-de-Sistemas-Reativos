@@ -4,16 +4,24 @@ local wifi_manager = require("wifi_manager")
 local scanner = require("scanner")
 local scheduler = require("scheduler")
 local network_store = require("network_store")
+local http_server = require("http_server")
 
 local main = {}
 
 local initialized = false
 
 local function execute_scan()
-    local started = scanner.start(function(success)
+    local started = scanner.start(function(success, received, missing)
         if success then
             print("[MAIN] Redes disponiveis: " ..
                   network_store.get_count())
+        elseif received and received > 0 then
+            print("[MAIN] Varredura parcial")
+            print("[MAIN] Canais com resposta:", received)
+            print("[MAIN] Canais sem resposta:", missing)
+            print("[MAIN] Canais nao tentados:",
+                  config.SCAN_LAST_CHANNEL - received - missing)
+            print("[MAIN] Redes:", network_store.get_count())
         else
             print("[MAIN] Falha na varredura")
         end
@@ -37,11 +45,11 @@ local function on_wifi_connected(ip)
 
     initialized = true
 
-    -- Primeira varredura imediata
-    execute_scan()
+    -- Inicia o servidor HTTP
+    http_server.start()
 
-    -- Inicia o agendamento das proximas
-    scheduler.start(execute_scan)
+    -- Ativa o scheduler antes do scan; a conclusao agenda a proxima rodada.
+    scheduler.start(execute_scan, true)
 end
 
 function main.start()

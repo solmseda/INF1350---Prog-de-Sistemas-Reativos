@@ -1,54 +1,24 @@
-
-local state_machine = {}
-
-local states = {
-    WAITING = "WAITING",
-    SCANNING = "SCANNING",
-    PROCESSING = "PROCESSING",
-    ERROR = "ERROR"
-}
-
-local current_state = states.WAITING
-
+local machine = {}
+local current = "WAITING"
+-- Strings substituem as tabelas aninhadas de estados e transicoes.
 local transitions = {
-    WAITING = {
-        SCANNING = true
-    },
-    SCANNING = {
-        PROCESSING = true,
-        ERROR = true
-    },
-    PROCESSING = {
-        WAITING = true,
-        ERROR = true
-    },
-    ERROR = {
-        WAITING = true
-    }
+    WAITING = "|SCANNING|",
+    SCANNING = "|PROCESSING|ERROR|",
+    PROCESSING = "|WAITING|ERROR|",
+    ERROR = "|WAITING|"
 }
 
-function state_machine.get_state()
-    return current_state
-end
-
-function state_machine.set_state(new_state)
-    local allowed = transitions[current_state]
-
-    if not allowed or not allowed[new_state] then
-        print("[STATE] Transicao invalida: " ..
-            current_state .. " -> " .. tostring(new_state))
+function machine.set_state(next_state)
+    if type(next_state) ~= "string" or
+       not string.find(transitions[current], "|" .. next_state .. "|", 1, true) then
+        print("[STATE] Transicao invalida:", tostring(next_state))
         return false
     end
-
-    print("[STATE] " .. current_state ..
-          " -> " .. new_state)
-
-    current_state = new_state
+    print("[STATE] " .. current .. " -> " .. next_state)
+    current = next_state
     return true
 end
 
-function state_machine.is(state)
-    return current_state == state
-end
-
-return state_machine
+function machine.get_state() return current end
+function machine.is(value) return current == value end
+return machine

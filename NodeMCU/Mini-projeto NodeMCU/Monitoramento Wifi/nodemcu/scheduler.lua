@@ -23,7 +23,7 @@ local function schedule_next()
     )
 end
 
-function scheduler.start(on_tick)
+function scheduler.start(on_tick, immediate)
     if running then
         return
     end
@@ -35,7 +35,12 @@ function scheduler.start(on_tick)
     print("[SCHEDULER] Intervalo: " ..
           config.SCAN_INTERVAL .. " ms")
 
-    schedule_next()
+    if immediate then
+        -- A conclusao da primeira rodada agenda a proxima, sem timer paralelo.
+        callback()
+    else
+        schedule_next()
+    end
 end
 
 function scheduler.next()
