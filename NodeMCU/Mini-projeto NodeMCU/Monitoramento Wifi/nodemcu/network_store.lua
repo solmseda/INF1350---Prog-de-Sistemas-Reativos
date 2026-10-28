@@ -24,7 +24,7 @@ function store.clear()
     count = 0
 end
 
--- Mantem as strings originais do firmware: uma unica tabela para ate 10 APs.
+-- Mantem as strings originais do firmware: uma unica tabela para ate 5 APs.
 -- Nao cria uma tabela e varias strings de campos para cada resultado do scan.
 function store.add_result(bssid, info)
     local rssi = get_rssi(info)
@@ -52,19 +52,12 @@ function store.finish()
     print("[STORE] Heap livre:", node.heap())
 end
 
--- Expande apenas quando um consumidor solicita os dados, nunca no scanner.
--- O chamador deve liberar a lista apos utiliza-la, sem manter um cache duplicado.
-function store.get_all()
-    local result = {}
-    for bssid, info in pairs(networks) do
-        local ssid, rssi, authmode, channel =
-            string.match(info, "^(.*),(-?%d+),(%d+),(%d+)$")
-        result[#result + 1] = {
-            ssid = ssid, rssi = tonumber(rssi), authmode = tonumber(authmode),
-            channel = tonumber(channel), bssid = bssid
-        }
-    end
-    return result
+-- Copia so as referencias das strings; mantem a resposta HTTP consistente
+-- mesmo que uma nova rodada substitua o armazenamento entre os envios.
+function store.snapshot()
+    local copy = {}
+    for key, value in pairs(networks) do copy[key] = value end
+    return copy
 end
 
 function store.get_count()

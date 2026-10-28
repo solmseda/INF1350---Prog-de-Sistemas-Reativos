@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi Monitor</title>
+<style>
+body{font:16px system-ui,sans-serif;background:#101827;color:#e4ecfa;max-width:900px;margin:40px auto;padding:0 20px}h1{margin-bottom:8px}p{color:#b7c6db;line-height:1.6}.card{background:#1b2940;border:1px solid #30445e;border-radius:14px;padding:20px;margin:20px 0}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left}td,th{padding:12px;border-bottom:1px solid #30445e;white-space:nowrap}th{color:#a9caff}#message{color:#f4cd76}small{color:#b7c6db}button{background:#a9caff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}
+</style>
+<h1>Wi-Fi Monitor</h1><p>Redes próximas • NodeMCU ESP8266</p>
+<section class="card"><strong id="device">Conectando…</strong><p id="status">Aguardando o dispositivo.</p><p id="message" role="status"></p><small id="updated"></small></section>
+<section class="card"><h2>Redes com sinal mais forte</h2><p>Até 5 redes. Durante a varredura, os dados são provisórios.</p><div class="scroll"><table><thead><tr><th>Rede</th><th>Sinal</th><th>Canal</th><th>Segurança</th><th>BSSID</th></tr></thead><tbody id="networks"></tbody></table></div></section>
+<button id="refresh">Atualizar agora</button><p><small>Consulta automática a cada 10 segundos. Atualizar a página não inicia uma nova varredura.</small></p>
+<script>
+const $=id=>document.getElementById(id);
+const labels={not_started:'Ainda não realizada',complete:'Completa',partial:'Parcial',error:'Falha'};
+const auth=['Aberta','WEP','WPA-PSK','WPA2-PSK','WPA/WPA2-PSK','WPA2 Enterprise'];
+let timer,running=false,cachedNetworks=[],cachedAt=0;
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function get(path){
+for(let attempt=0;attempt<3;attempt++){
+const controller=new AbortController(),deadline=setTimeout(()=>controller.abort(),8000);
+try{
+const r=await fetch(path,{cache:'no-store',signal:controller.signal});
+if(r.status===503&&attempt<2){await r.text();await wait(500);continue}
+if(!r.ok)throw Error(r.status===503?'dispositivo ocupado com varredura ou outra conexão (HTTP 503)':'HTTP '+r.status);
+try{return await r.json()}catch(e){throw Error('resposta JSON incompleta ou inválida')}
+}catch(e){throw Error(path+': '+(e.name==='AbortError'?'tempo de espera excedido':e.message))}
+finally{clearTimeout(deadline)}
+}}
+
+async function update(){if(running)return;running=true;clearTimeout(timer);$('refresh').disabled=true;
+try{
+const s=await get('/api/status');
+$('device').textContent=s.device+' · '+(s.ip||'sem IP');
+$('status').textContent=(s.scanning?'Varrendo canal '+s.channel:s.state)+' · Memória livre: '+s.heap+' bytes';
+$('message').textContent='Última rodada: '+labels[s.last_result]+'. Canais com resposta: '+s.received+'; sem resposta: '+s.missing+'; não tentados: '+s.unattempted+'.';
+$('updated').textContent=s.last_update?'Dados atualizados há '+Math.max(0,s.uptime-s.last_update)+' s (tempo do dispositivo).':'Sem atualização concluída.';
+await wait(250);
+let networks=await get('/api/networks');
+if(!networks.length&&cachedNetworks.length&&(s.scanning||s.last_result!=='complete'||s.network_count>0)){
+networks=cachedNetworks;
+$('message').textContent+=' Exibindo a última lista recebida; a rodada atual ainda não forneceu uma nova lista válida.';
+$('updated').textContent='Lista anterior recebida há '+Math.floor((Date.now()-cachedAt)/1000)+' s. Os sinais podem estar desatualizados.';
+}else{
+cachedNetworks=networks;cachedAt=Date.now();
+}
+networks.sort((a,b)=>b.rssi-a.rssi);$('networks').replaceChildren();
+for(const n of networks){const row=document.createElement('tr');for(const value of [n.ssid||'(oculta)',n.rssi+' dBm',n.channel,auth[n.authmode]||'Modo '+n.authmode,n.bssid]){const cell=document.createElement('td');cell.textContent=value;row.append(cell)}$('networks').append(row)}
+if(!networks.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='Nenhuma rede disponível nesta rodada.';row.append(cell);$('networks').append(row)}
+}catch(e){$('message').textContent='Não foi possível atualizar ('+e.message+'). Nova tentativa em 10 segundos.'}
+finally{running=false;$('refresh').disabled=false;timer=setTimeout(update,10000)}}
+$('refresh').addEventListener('click',update);update();
+</script></html>

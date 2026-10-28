@@ -1,36 +1,34 @@
-
 local http_server = {}
+local config = require("config")
+local server, busy
+local function release() busy = false end
 
-local server = nil
-
-function http_server.start()
-    if server then
+local function close(c) c:close() end
+local function request(c, data)
+    c:on("receive", nil)
+    collectgarbage("collect")
+    print("[HTTP] Requisicao. Heap:", node.heap())
+    if busy or require("scanner").is_scanning() or node.heap() < 10000 then
+        c:send("HTTP/1.0 503 Busy\r\nRetry-After: 5\r\nConnection: close\r\n\r\n", close)
         return
     end
-
-    server = net.createServer(net.TCP, 30)
-
-    server:listen(80, function(connection)
-        connection:on("receive", function(conn, request)
-            print("[HTTP] Requisicao recebida")
-
-            local body = "Wi-Fi Monitor funcionando!"
-
-            local response =
-                "HTTP/1.1 200 OK\r\n" ..
-                "Content-Type: text/plain\r\n" ..
-                "Content-Length: " .. #body .. "\r\n" ..
-                "Connection: close\r\n" ..
-                "\r\n" ..
-                body
-
-            conn:send(response, function(c)
-                c:close()
-            end)
-        end)
-    end)
-
-    print("[HTTP] Servidor iniciado na porta 80")
+    busy = true
+    local ok, handler = pcall(dofile, "http_connection.lc")
+    if ok then ok, handler = pcall(handler, c, release, data) end
+    if not ok then
+        print("[HTTP] Falha:", tostring(handler))
+        busy = false
+        c:close()
+        collectgarbage("collect")
+    end
 end
+local function accept(conn) conn:on("receive", request) end
 
+function http_server.is_busy() return busy end
+function http_server.start()
+    if server then return end
+    server = net.createServer(net.TCP, 5)
+    server:listen(config.HTTP_PORT, accept)
+    print("[HTTP] Servidor iniciado na porta " .. config.HTTP_PORT)
+end
 return http_server
